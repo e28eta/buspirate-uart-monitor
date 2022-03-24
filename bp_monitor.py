@@ -4,9 +4,9 @@
 Connect to a Bus Pirate, put it into UART live monitor mode, and wait
 """
 import sys
-from time import sleep
 import serial
 from serial.tools.miniterm import key_description
+from serial.tools.list_ports_common import ListPortInfo
 import argparse
 from typing import Optional
 
@@ -52,15 +52,58 @@ def Send(connection: serial.Serial, message: bytes, expected_response: bytes, er
         else:
             sys.stderr.write(error_message + '\n')
 
+def is_possible_buspirate(port: ListPortInfo) -> bool:
+    return ((port.vid == 0x0403 and port.pid == 0x6001) or
+            (port.vid == 0x04d8 and port.pid == 0xfb00))
+
+def find_buspirate_port():
+    all_ports_found = sorted(serial.tools.list_ports.comports())
+    ports_matching_filter = list(filter(is_possible_buspirate, all_ports_found))
+    if len(ports_matching_filter) == 1:
+        pirate_port = ports_matching_filter[0].device
+        sys.stderr.write(f'Found only one serial port matching expected Bus Pirate vendor & product id: {pirate_port}\n')
+        sys.stderr.write('To use a different port, you\'ll need to explicitly specify desired port with -p or --port\n')
+        return pirate_port
+
+    sys.stderr.write(f'\nFound {"zero" if len(ports_matching_filter) == 0 else "multiple"} possible Bus Pirates\n')
+    sys.stderr.write('--- All available ports:\n')
+    ports = []
+    for n, port in enumerate(all_ports_found, 1):
+        matches_pirate = ('', ' -- Possible Bus Pirate!')[port in ports_matching_filter]
+        sys.stderr.write('--- {:2}: {:20} {!r}{}\n'.format(n, port.device, port.description, matches_pirate))
+        ports.append(port.device)
+    while True:
+        port = input('--- Enter port index or full name: ')
+        try:
+            index = int(port) - 1
+            if not 0 <= index < len(ports):
+                sys.stderr.write('--- Invalid index!\n')
+                continue
+        except ValueError:
+            pass
+        else:
+            port = ports[index]
+        return port
+
 def main():
     parser = argparse.ArgumentParser(description = 'Bus Pirate UART monitor')
 
     parser.add_argument(
             '--port', '-p',
             help = 'TTY device for Bus Pirate',
-            default = '/dev/tty.usbserial-A6024B6I')
+            default = None)
 
     args = parser.parse_args()
+
+    if args.port is None or args.port == '-':
+        try:
+            args.port = find_buspirate_port()
+        except KeyboardInterrupt:
+            sys.stderr.write('\n')
+            parser.error('user aborted')
+        else:
+            if not args.port:
+                parser.error('could not find Bus Pirate port, and user did not specify one')
 
     baud = 115200
     # also 115200, despite error on http://dangerousprototypes.com/docs/UART_(binary)#0110xxxx_-_Set_UART_speed
