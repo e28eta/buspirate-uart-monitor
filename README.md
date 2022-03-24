@@ -31,3 +31,16 @@ pipx install git+https://github.com/e28eta/buspirate-uart-monitor
 ```
 
 I've used `--editable` so that updates to the local git repo are immediately reflected in the executable
+
+## Development
+
+I think it's set up correctly for [direnv](https://direnv.net) to manage the python
+virtual environment. From within the directory:
+
+```
+direnv allow
+pip install -e '.[dev]'
+```
+
+This should install the `serial` runtime dependency and `black`/`isort` dev dependencies.
+Run those tools occasionally.
