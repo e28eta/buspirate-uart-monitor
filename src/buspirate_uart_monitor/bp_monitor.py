@@ -3,12 +3,13 @@
 """
 Connect to a Bus Pirate, put it into UART mode compatible with esphome logger, and print everything received
 """
-import sys
-import serial
-from serial.tools.miniterm import key_description
-from serial.tools.list_ports_common import ListPortInfo
 import argparse
+import sys
 from typing import Optional
+
+import serial
+from serial.tools.list_ports_common import ListPortInfo
+from serial.tools.miniterm import key_description
 
 
 class DoNotTx(serial.tools.miniterm.Transform):
